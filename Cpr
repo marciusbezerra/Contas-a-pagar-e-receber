@@ -1,0 +1,160 @@
+Attribute VB_Name = "mCPR"
+'************************************************
+' Este código foi retirado da Seriallink.com    *
+' www.seriallink.com                            *
+' UESLEI R. VALENTINI (ueslei@seriallink.com)   *
+' Última Revisão: 25/08/99                      *
+'************************************************
+Global Const Inclusao = 0
+Global Const Alteracao = 1
+Global Const Exclusao = 2
+Global Banco As Database
+Global Area As Workspace
+Global Consulta As QueryDef
+Global Tabela As Recordset
+
+Public Sub ComboCliente(combo As Control)
+   combo.Clear
+   Set Tabela = Banco.OpenRecordset("SelClientes", dbOpenSnapshot)
+   Do Until Tabela.EOF
+      combo.AddItem Tabela("codinome")
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+Sub LimpaControles(Janela As Form)
+   For i = 0 To Janela.Controls.Count - 1
+      If TypeOf Janela.Controls(i) Is TextBox Then
+         Janela.Controls(i).Text = ""
+      End If
+   Next i
+End Sub
+
+
+' EDITA REGISTRO DE UMA TABELA
+Sub EditaRegistro(Janela As Form)
+   Dim NomeQuery As String, contador As Integer
+   Dim Texto As String, Codigo As Integer, Auxiliar As Integer
+   
+   LimpaControles Janela
+   For contador = 0 To Janela.Count - 1
+      If Left(Janela.Controls(contador).Tag, 1) = "*" Then
+         For Auxiliar = 1 To Len(Janela.Controls(contador).Tag)
+            If Mid(Janela.Controls(contador).Tag, Auxiliar, 1) = "@" Then
+               NomeQuery = "Sel" & Mid(Janela.Controls(contador).Tag, 2, Auxiliar - 2)
+               Texto = Janela.Controls(contador).Name
+               Codigo = Janela.Controls(contador).ItemData(Janela.Controls(contador).ListIndex)
+               Exit For
+            End If
+         Next Auxiliar
+         Exit For
+      End If
+   Next contador
+   
+   Set Consulta = Banco.QueryDefs(NomeQuery)
+   Consulta(Texto) = Codigo
+   Set Tabela = Consulta.OpenRecordset()
+   
+   For contador = 0 To Janela.Count - 1
+      If Not Left(Janela.Controls(contador).Tag, 1) = "*" Then
+         If TypeOf Janela.Controls(contador) Is TextBox Then
+            If Not IsNull(Tabela(Mid(Janela.Controls(contador).Name, 4))) Then
+               Janela.Controls(contador) = Tabela(Mid(Janela.Controls(contador).Name, 4))
+            End If
+         End If
+      End If
+   Next contador
+   
+   Tabela.Close
+End Sub
+
+
+' ROTINA DE PREENCHIMENTO DE LISTAS E COMBOS
+Sub MontaLista(Lista As Control)
+   Dim NomeQuery As String, contador As Integer
+   Dim Texto As String, Codigo As String
+   For contador = 1 To Len(Lista.Tag)
+      If Mid(Lista.Tag, contador, 1) = "@" Then
+         NomeQuery = "SelId" & Mid(Lista.Tag, 2, contador - 2)
+         Texto = Mid(Lista.Tag, contador + 1)
+      End If
+   Next
+   Codigo = "ID" & Mid(Lista.Name, 4)
+   
+   Lista.Clear
+   Set Tabela = Banco.OpenRecordset(NomeQuery, dbOpenSnapshot)
+   Do Until Tabela.EOF
+      Lista.AddItem Tabela(Texto)
+      Lista.ItemData(Lista.NewIndex) = Tabela(Codigo)
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+
+
+Sub main()
+   Set Area = DBEngine.CreateWorkspace("NewWorkspace", "Admin", "")
+   Set Banco = Area.OpenDatabase(App.Path & "\CPR.MDB")
+   mdiCPR.Show
+End Sub
+
+
+Public Sub ComboFornecedor(combo As Control)
+   combo.Clear
+   Set Tabela = Banco.OpenRecordset("SelFornecedores", dbOpenSnapshot)
+   Do Until Tabela.EOF
+      combo.AddItem Tabela("codinome")
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+
+Function ConsisteData(controle As Control)
+   Dim Resultado As Integer
+   Resultado = True
+   If Len(controle) <> 0 Then
+      If Not IsDate(Format(controle, "dd-mmm-yy")) Then
+            MsgBox "Data inválida", 16, "Erro!"
+            Resultado = False
+      End If
+   End If
+   ConsisteData = Resultado
+End Function
+
+Public Sub ComboBanco(combo As Control)
+   combo.Clear
+   Set Tabela = Banco.OpenRecordset("SelBancos", dbOpenSnapshot)
+   Do Until Tabela.EOF
+      combo.AddItem Tabela("nome")
+      combo.ItemData(combo.NewIndex) = Tabela("IdBanco")
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+
+Public Sub ComboAgencia(combo As Control, CodigoBanco As Integer)
+   combo.Clear
+   Set Consulta = Banco.QueryDefs("SelAgencias")
+   Consulta("parIdBanco") = CodigoBanco
+   Set Tabela = Consulta.OpenRecordset()
+   Do Until Tabela.EOF
+      combo.AddItem Tabela("nome")
+      combo.ItemData(combo.NewIndex) = Tabela("IdAgencia")
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+Public Sub ComboContaCorrente(combo As Control, CodigoBanco As Integer, CodigoAgencia As Integer)
+   combo.Clear
+   Set Consulta = Banco.QueryDefs("SelContasCorrentes")
+   Consulta("parIdBanco") = CodigoBanco
+   Consulta("parIdAgencia") = CodigoAgencia
+   
+   Set Tabela = Consulta.OpenRecordset()
+   Do Until Tabela.EOF
+      combo.AddItem Tabela("Conta")
+      Tabela.MoveNext
+   Loop
+   Tabela.Close
+End Sub
+
